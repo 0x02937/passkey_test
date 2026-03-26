@@ -61,10 +61,14 @@
     Assertions do not include the COSE key — only flags, counters, signature, and <code>clientDataJSON</code>.
   </p>
   <div class="warn">
-    <strong>Serve over HTTPS or <code>http://localhost</code> / <code>http://127.0.0.1</code>.</strong>
-    Octra webcli: <code>http://127.0.0.1:8420/passkey-ed25519-test.html</code>.
+    <strong>Deployed copy:</strong>
+    <a href="https://passkey-test-hhkx.onrender.com/">https://passkey-test-hhkx.onrender.com/</a>
+    (HTTPS — required for WebAuthn outside loopback). <code>rpId</code> is
+    <code>passkey-test-hhkx.onrender.com</code>; passkeys are bound to this host.
+    <strong>Local dev:</strong> serve the <code>passkey/</code> directory over
+    <code>http://127.0.0.1</code> / <code>localhost</code> only — do not use <code>file://</code>.
     For QR-from-desktop: the passkey must exist for this <strong>same rpId</strong> on the phone
-    (e.g. synced Google/iCloud account, or create the passkey on the phone against this URL).
+    (e.g. synced Google/iCloud account, or create the passkey on the phone at this site).
   </div>
 
   <section>
