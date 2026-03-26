@@ -1,527 +1,574 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>WebAuthn Ed25519 (-8) passkey probe</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Passkey -8 Tester</title>
   <style>
-    :root {
-      font-family: system-ui, Segoe UI, sans-serif;
-      line-height: 1.45;
-      --ok: #0a6;
-      --bad: #c12;
-      --muted: #666;
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #080b14;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 36px 16px 60px;
     }
-    body { max-width: 720px; margin: 1.5rem auto; padding: 0 1rem; }
-    h1 { font-size: 1.25rem; }
-    .warn {
-      background: #fff7e6;
-      border: 1px solid #e8c96a;
-      padding: 0.75rem 1rem;
-      border-radius: 6px;
-      margin: 1rem 0;
-      font-size: 0.9rem;
+
+    .container { max-width: 700px; margin: 0 auto; }
+
+    header { margin-bottom: 28px; }
+    header h1 { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; }
+    header h1 span { color: #818cf8; }
+    header p { color: #4b5563; font-size: 0.875rem; margin-top: 6px; }
+
+    .alert {
+      background: #1c1100;
+      border: 1px solid #92400e;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 0.8125rem;
+      color: #fbbf24;
+      margin-bottom: 20px;
     }
+    .alert code {
+      background: #2a1c00;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+    }
+
+    .env-bar {
+      background: #0f1623;
+      border: 1px solid #1a2540;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 24px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+    }
+
+    .env-item { display: flex; flex-direction: column; gap: 3px; }
+    .env-label {
+      font-size: 0.625rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #374151;
+      font-weight: 700;
+    }
+    .env-value { font-size: 0.8125rem; color: #94a3b8; font-weight: 500; }
+
+    .card {
+      background: #0f1623;
+      border: 1px solid #1a2540;
+      border-radius: 14px;
+      padding: 26px;
+      margin-bottom: 16px;
+    }
+
+    .step-label {
+      display: inline-block;
+      font-size: 0.625rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #6366f1;
+      margin-bottom: 10px;
+    }
+
+    .card h2 { font-size: 1.0625rem; font-weight: 700; margin-bottom: 6px; }
+    .card .desc { font-size: 0.8125rem; color: #4b5563; margin-bottom: 18px; line-height: 1.5; }
+
+    .param-box {
+      background: #080b14;
+      border: 1px solid #1a2540;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.8125rem;
+      color: #818cf8;
+      margin-bottom: 18px;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+    }
+    .param-box em { color: #c7d2fe; font-style: normal; font-weight: 700; }
+
     button {
-      font: inherit;
-      padding: 0.5rem 1rem;
-      margin: 0.25rem 0.5rem 0.25rem 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 22px;
+      border-radius: 8px;
+      font-size: 0.9375rem;
+      font-weight: 700;
+      border: none;
       cursor: pointer;
-      border-radius: 6px;
-      border: 1px solid #333;
-      background: #f4f4f4;
+      transition: filter 0.15s, transform 0.1s;
+      letter-spacing: 0.01em;
     }
-    button.primary { background: #1a5fb4; color: #fff; border-color: #154a94; }
-    pre {
-      background: #f0f0f0;
-      padding: 0.75rem;
-      border-radius: 6px;
-      overflow-x: auto;
-      font-size: 0.8rem;
-      white-space: pre-wrap;
+    button:active { transform: scale(0.97); }
+    button:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+    button:hover:not(:disabled) { filter: brightness(1.12); }
+
+    .btn-create { background: #4f46e5; color: #fff; }
+    .btn-check  { background: #059669; color: #fff; }
+
+    .spinner {
+      width: 15px; height: 15px;
+      border: 2px solid rgba(255,255,255,0.25);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.65s linear infinite;
+      display: none;
+    }
+    .spinner.on { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .result-box {
+      margin-top: 22px;
+      border: 1px solid #1a2540;
+      border-radius: 10px;
+      overflow: hidden;
+      display: none;
+    }
+    .result-box.show { display: block; }
+
+    .result-hdr {
+      padding: 10px 16px;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .result-hdr.ok  { background: #052e16; color: #4ade80; border-bottom: 1px solid #14532d; }
+    .result-hdr.err { background: #1c0808; color: #f87171; border-bottom: 1px solid #450a0a; }
+
+    .result-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+
+    .field-label {
+      font-size: 0.625rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #374151;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .field-value {
+      font-size: 0.8125rem;
+      color: #94a3b8;
       word-break: break-all;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      background: #080b14;
+      border-radius: 6px;
+      padding: 8px 10px;
+      line-height: 1.5;
     }
-    .pass { color: var(--ok); font-weight: 600; }
-    .fail { color: var(--bad); font-weight: 600; }
-    table { border-collapse: collapse; width: 100%; margin: 0.75rem 0; font-size: 0.9rem; }
-    th, td { border: 1px solid #ccc; padding: 0.35rem 0.5rem; text-align: left; vertical-align: top; }
-    th { background: #eee; }
-    .muted { color: var(--muted); font-size: 0.85rem; }
+    .field-value.green { color: #4ade80; }
+
+    .flags { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; background: #080b14; border-radius: 6px; }
+    .flag {
+      padding: 3px 9px;
+      border-radius: 5px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      background: #111827;
+      color: #374151;
+    }
+    .flag.on { background: #052e16; color: #4ade80; }
+
+    .transports { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; background: #080b14; border-radius: 6px; }
+    .transport {
+      padding: 3px 9px;
+      border-radius: 5px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: #0f1f40;
+      color: #60a5fa;
+    }
   </style>
 </head>
 <body>
-  <h1>WebAuthn Ed25519 (<code>alg: -8</code>) probe</h1>
-  <p class="muted">
-    <strong>1.</strong> Create a passkey on this machine (or any profile that syncs the same passkey for this site). <br>
-    <strong>2.</strong> Check passkey uses a <em>discoverable</em> request with <code>hints: [&quot;hybrid&quot;]</code> so Chrome can offer
-    <strong>QR + phone</strong> or <strong>device PIN / biometrics</strong>. What you see depends on the browser and where the credential lives.
-  </p>
-  <p class="muted">
-    Registration still requests <code>alg: -8</code> only; COSE is parsed from <code>attestationObject</code>.
-    Assertions do not include the COSE key — only flags, counters, signature, and <code>clientDataJSON</code>.
-  </p>
-  <div class="warn">
-    <strong>Deployed copy:</strong>
-    <a href="https://passkey-test-hhkx.onrender.com/">https://passkey-test-hhkx.onrender.com/</a>
-    (HTTPS — required for WebAuthn outside loopback). <code>rpId</code> is
-    <code>passkey-test-hhkx.onrender.com</code>; passkeys are bound to this host.
-    <strong>Local dev:</strong> serve the <code>passkey/</code> directory over
-    <code>http://127.0.0.1</code> / <code>localhost</code> only — do not use <code>file://</code>.
-    For QR-from-desktop: the passkey must exist for this <strong>same rpId</strong> on the phone
-    (e.g. synced Google/iCloud account, or create the passkey on the phone at this site).
+<div class="container">
+
+  <header>
+    <h1>Passkey <span>-8</span> Tester</h1>
+    <p>Ed25519 / EdDSA passkey creation &amp; authentication tester across environments</p>
+  </header>
+
+  <div id="alertFile" class="alert" style="display:none">
+    ⚠ WebAuthn requires a secure context. Serve this file via a local server:
+    <code>python -m http.server 8080</code> then open <code>http://localhost:8080</code>
+  </div>
+  <div id="alertNoSupport" class="alert" style="display:none">
+    ⚠ WebAuthn / PublicKeyCredential is not supported in this browser.
   </div>
 
-  <section>
-    <button type="button" class="primary" id="btnCreate">1 — Create passkey (Ed25519 -8 only)</button>
-    <button type="button" class="primary" id="btnCheck">2 — Check passkey (picker / QR / PIN)</button>
-    <button type="button" id="btnGetSaved">Check same-tab credential (stored id)</button>
-    <button type="button" id="btnClear">Clear stored credential id</button>
-  </section>
+  <div class="env-bar" id="envBar"></div>
 
-  <h2>Environment</h2>
-  <pre id="envOut"></pre>
+  <!-- Step 1 -->
+  <div class="card">
+    <span class="step-label">Step 1</span>
+    <h2>Create Passkey</h2>
+    <p class="desc">
+      Registers a discoverable passkey specifying only alg <strong>-8</strong> (EdDSA / Ed25519).
+      The browser will prompt for biometrics or PIN.
+    </p>
+    <div class="param-box">pubKeyCredParams: [{ type: "public-key", alg: <em>-8</em> }]</div>
+    <button class="btn-create" id="btnCreate" onclick="createPasskey()">
+      <div class="spinner" id="spCreate"></div>
+      <span id="lblCreate">Create Passkey</span>
+    </button>
+    <div class="result-box" id="boxCreate">
+      <div class="result-hdr ok" id="hdrCreate"></div>
+      <div class="result-body" id="bodyCreate"></div>
+    </div>
+  </div>
 
-  <h2>Result</h2>
-  <pre id="resultOut"></pre>
+  <!-- Step 2 -->
+  <div class="card">
+    <span class="step-label">Step 2</span>
+    <h2>Check / Authenticate</h2>
+    <p class="desc">
+      Opens the browser passkey picker. Choose QR code to scan with an iPhone or Android device.
+      The full decoded response is shown below so you can verify what your passkey actually returned.
+    </p>
+    <button class="btn-check" id="btnCheck" onclick="checkPasskey()">
+      <div class="spinner" id="spCheck"></div>
+      <span id="lblCheck">Check</span>
+    </button>
+    <div class="result-box" id="boxCheck">
+      <div class="result-hdr ok" id="hdrCheck"></div>
+      <div class="result-body" id="bodyCheck"></div>
+    </div>
+  </div>
 
-  <h2>Assertion detail (after Check passkey)</h2>
-  <pre id="assertOut"></pre>
+</div>
+<script>
+// ── Encoding helpers ──────────────────────────────────────────────────────────
 
-  <h2>COSE key (create only)</h2>
-  <div id="coseTable"></div>
-  <pre id="rawOut"></pre>
+function toB64url(buf) {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
 
-  <script type="module">
-    import { decode, decodeFirst } from "https://cdn.jsdelivr.net/npm/cborg@4.2.8/+esm";
+function toHex(buf) {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
+}
 
-    const LS_CRED = "passkey_test_credential_id_b64";
+// ── Minimal CBOR decoder (covers types needed for WebAuthn) ───────────────────
 
-    const COSE = {
-      kty: { 1: "OKP", 2: "EC2" },
-      crv: { 1: "P-256", 2: "P-384", 3: "P-521", 6: "Ed25519", 5: "secp256k1" },
-      alg: {
-        "-7": "ES256 (P-256 ECDSA)",
-        "-8": "EdDSA (Ed25519)",
-        "-257": "RS256",
-      },
-    };
+function decodeCBOR(input) {
+  const b = input instanceof Uint8Array ? input : new Uint8Array(input);
+  let pos = 0;
 
-    function u8ToB64url(u8) {
-      let s = "";
-      for (let i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]);
-      return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-    }
+  function u8()  { return b[pos++]; }
+  function u16() { const v = (b[pos] << 8) | b[pos + 1]; pos += 2; return v; }
+  function u32() { const v = (b[pos] * 0x1000000) | ((b[pos+1] << 16) | (b[pos+2] << 8) | b[pos+3]); pos += 4; return v; }
 
-    function b64urlToU8(s) {
-      let b64 = s.replace(/-/g, "+").replace(/_/g, "/");
-      const pad = b64.length % 4;
-      if (pad) b64 += "=".repeat(4 - pad);
-      const bin = atob(b64);
-      const out = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-      return out;
-    }
+  function len(info) {
+    if (info < 24) return info;
+    if (info === 24) return u8();
+    if (info === 25) return u16();
+    if (info === 26) return u32();
+    throw new Error('CBOR: unsupported additional info ' + info);
+  }
 
-    function randomChallenge(n = 32) {
-      const a = new Uint8Array(n);
-      crypto.getRandomValues(a);
-      return a;
-    }
+  function next() {
+    const init  = u8();
+    const major = init >> 5;
+    const info  = init & 0x1f;
+    if (major === 0) return len(info);
+    if (major === 1) return -1 - len(info);
+    if (major === 2) { const n = len(info); const s = b.slice(pos, pos + n); pos += n; return s; }
+    if (major === 3) { const n = len(info); const s = new TextDecoder().decode(b.slice(pos, pos + n)); pos += n; return s; }
+    if (major === 4) { const n = len(info); const a = []; for (let i = 0; i < n; i++) a.push(next()); return a; }
+    if (major === 5) { const n = len(info); const m = new Map(); for (let i = 0; i < n; i++) { const k = next(); m.set(k, next()); } return m; }
+    throw new Error('CBOR: unsupported major type ' + major);
+  }
 
-    function abToU8(ab) {
-      return new Uint8Array(ab);
-    }
+  return next();
+}
 
-    function getMapEntry(m, key) {
-      if (m instanceof Map) return m.get(key);
-      if (m && typeof m === "object") {
-        if (key in m) return m[key];
-        const sk = String(key);
-        if (sk in m) return m[sk];
-      }
-      return undefined;
-    }
+// ── WebAuthn data parsers ─────────────────────────────────────────────────────
 
-    function parseAuthData(authDataU8) {
-      if (authDataU8.length < 37) throw new Error("authData too short");
-      const rpIdHash = authDataU8.subarray(0, 32);
-      const flags = authDataU8[32];
-      const signCount =
-        (authDataU8[33] << 24) |
-        (authDataU8[34] << 16) |
-        (authDataU8[35] << 8) |
-        authDataU8[36];
-      const AT = !!(flags & 0x40);
-      const ED = !!(flags & 0x80);
-      let offset = 37;
-      let aaguid = null;
-      let credentialId = null;
-      let coseRaw = null;
-      let coseDecoded = null;
-      if (AT) {
-        if (authDataU8.length < offset + 16 + 2) throw new Error("authData truncated (aaguid)");
-        aaguid = authDataU8.subarray(offset, offset + 16);
-        offset += 16;
-        const credIdLen = (authDataU8[offset] << 8) | authDataU8[offset + 1];
-        offset += 2;
-        if (authDataU8.length < offset + credIdLen) throw new Error("authData truncated (credId)");
-        credentialId = authDataU8.subarray(offset, offset + credIdLen);
-        offset += credIdLen;
-        const rest = authDataU8.subarray(offset);
-        const [cose, remainder] = decodeFirst(rest);
-        coseDecoded = cose;
-        coseRaw = rest.subarray(0, rest.length - remainder.length);
-        offset += coseRaw.length;
-      }
-      return {
-        rpIdHash,
-        flags,
-        signCount,
-        AT,
-        ED,
-        aaguid,
-        credentialId,
-        coseRaw,
-        coseDecoded,
-        offsetAfterCose: offset,
-      };
-    }
+function parseAttObj(buf) {
+  const m = decodeCBOR(new Uint8Array(buf));
+  return { fmt: m.get('fmt'), authData: m.get('authData'), attStmt: m.get('attStmt') };
+}
 
-    function parseAttestationObject(attObjU8) {
-      const root = decode(attObjU8);
-      let fmt, authDataU8, attStmt;
-      if (root instanceof Map) {
-        fmt = getMapEntry(root, "fmt");
-        attStmt = getMapEntry(root, "attStmt");
-        const ad = getMapEntry(root, "authData");
-        authDataU8 = ad instanceof Uint8Array ? ad : abToU8(ad);
-      } else if (root && typeof root === "object") {
-        fmt = root.fmt;
-        attStmt = root.attStmt;
-        const ad = root.authData;
-        authDataU8 = ad instanceof Uint8Array ? ad : abToU8(ad);
-      } else throw new Error("unexpected attestationObject root");
-      return { fmt, attStmt, authDataU8, authDataParsed: parseAuthData(authDataU8) };
-    }
+function parseAuthData(buf) {
+  const d = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  const flags = d[32];
+  const signCount = ((d[33] << 24) | (d[34] << 16) | (d[35] << 8) | d[36]) >>> 0;
 
-    function describeCose(cose) {
-      const kty = getMapEntry(cose, 1);
-      const alg = getMapEntry(cose, 3);
-      const crv = getMapEntry(cose, -1);
-      const x = getMapEntry(cose, -2);
-      const y = getMapEntry(cose, -3);
-      const ktyN = typeof kty === "number" ? kty : null;
-      const algN = typeof alg === "number" ? alg : null;
-      const crvN = typeof crv === "number" ? crv : null;
-      const xU8 = x instanceof Uint8Array ? x : null;
-      const yU8 = y instanceof Uint8Array ? y : null;
-      const isEd25519 = ktyN === 1 && algN === -8 && crvN === 6 && xU8 && xU8.length === 32;
-      const isP256 = ktyN === 2 && algN === -7 && crvN === 1 && xU8 && yU8;
-      return {
-        ktyN,
-        algN,
-        crvN,
-        xLen: xU8 ? xU8.length : null,
-        yLen: yU8 ? yU8.length : null,
-        isEd25519,
-        isP256,
-        label: isEd25519
-          ? "Ed25519 (OKP, alg -8, crv 6, x=32)"
-          : isP256
-            ? "P-256 / ES256 (fallback — browser ignored -8-only request)"
-            : `Other (kty=${ktyN}, alg=${algN}, crv=${crvN})`,
-      };
-    }
+  const r = {
+    rpIdHash: d.slice(0, 32),
+    flags: {
+      UP: !!(flags & 0x01),
+      UV: !!(flags & 0x04),
+      BE: !!(flags & 0x08),
+      BS: !!(flags & 0x10),
+      AT: !!(flags & 0x40),
+      ED: !!(flags & 0x80),
+    },
+    signCount,
+    aaguid: null,
+    credentialId: null,
+    coseKey: null,
+  };
 
-    function hexU8(u8) {
-      return [...u8].map((b) => b.toString(16).padStart(2, "0")).join("");
-    }
+  if (r.flags.AT && d.length > 37) {
+    let off = 37;
+    r.aaguid = d.slice(off, off + 16); off += 16;
+    const idLen = (d[off] << 8) | d[off + 1]; off += 2;
+    r.credentialId = d.slice(off, off + idLen); off += idLen;
+    try { r.coseKey = decodeCBOR(d.slice(off)); } catch (_) {}
+  }
 
-    function renderCoseTable(desc, cose) {
-      const rows = [
-        ["kty (1)", desc.ktyN, COSE.kty[desc.ktyN] || ""],
-        ["alg (3)", desc.algN, COSE.alg[String(desc.algN)] || ""],
-        ["crv (-1)", desc.crvN, COSE.crv[desc.crvN] || ""],
-        ["x (-2) len", desc.xLen, ""],
-        ["y (-3) len", desc.yLen ?? "—", ""],
-      ];
-      let html = "<table><thead><tr><th>Field</th><th>Value</th><th>Name</th></tr></thead><tbody>";
-      for (const [a, b, c] of rows) {
-        html += `<tr><td><code>${a}</code></td><td>${b}</td><td>${c}</td></tr>`;
-      }
-      html += `<tr><td colspan="3"><span class="${desc.isEd25519 ? "pass" : "fail"}">${desc.label}</span></td></tr>`;
-      html += "</tbody></table>";
-      html += "<p class=\"muted\">Raw COSE map (JSON):</p><pre>" + JSON.stringify(
-        cose instanceof Map ? Object.fromEntries(cose) : cose,
-        (_, v) => (v instanceof Uint8Array ? "0x" + hexU8(v) : v),
-        2
-      ) + "</pre>";
-      return html;
-    }
+  return r;
+}
 
-    async function envProbe() {
-      const u = new URL(window.location.href);
-      const secure = u.protocol === "https:" || u.hostname === "localhost" || u.hostname === "127.0.0.1";
-      const lines = [
-        `href: ${u.href}`,
-        `origin: ${window.location.origin}`,
-        `protocol: ${u.protocol}`,
-        `hostname: ${u.hostname}`,
-        `WebAuthn likely usable here: ${secure ? "yes (HTTPS or loopback)" : "NO — use HTTPS or localhost"}`,
-        `PublicKeyCredential: ${typeof PublicKeyCredential}`,
-        `isUserVerifyingPlatformAuthenticatorAvailable: ${typeof PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable === "function"}`,
-        `conditionalMediation: ${typeof PublicKeyCredential?.isConditionalMediationAvailable === "function"}`,
-        `userAgent: ${navigator.userAgent}`,
-      ];
-      try {
-        if (typeof PublicKeyCredential?.getClientCapabilities === "function") {
-          const c = await PublicKeyCredential.getClientCapabilities();
-          lines.push(`getClientCapabilities: ${JSON.stringify(c)}`);
-        } else {
-          lines.push("getClientCapabilities: not supported");
-        }
-      } catch (e) {
-        lines.push(`getClientCapabilities: error ${e.message}`);
-      }
-      document.getElementById("envOut").textContent = lines.join("\n");
-    }
+// ── Algorithm name map (COSE) ─────────────────────────────────────────────────
 
-    envProbe();
+const ALG = { '-7': 'ES256 (ECDSA P-256)', '-8': 'EdDSA (Ed25519)', '-257': 'RS256', '-37': 'PS256' };
+const KTY  = { 1: 'OKP', 2: 'EC2', 3: 'RSA' };
+const CRV  = { 1: 'P-256', 6: 'Ed25519' };
 
-    function formatAssertionResult(cred) {
-      const r = cred.response;
-      const ad = abToU8(r.authenticatorData);
-      const sig = abToU8(r.signature);
-      const ap = parseAuthData(ad);
-      const cdjBuf = r.clientDataJSON;
-      const cdjText = new TextDecoder().decode(cdjBuf);
-      let cdjJson;
-      try {
-        cdjJson = JSON.parse(cdjText);
-      } catch (e) {
-        cdjJson = null;
-      }
-      const uh = r.userHandle;
-      const userHandleHex = uh && uh.byteLength > 0 ? hexU8(abToU8(uh)) : "—";
+// ── Render helpers ────────────────────────────────────────────────────────────
 
-      const lines = [];
-      lines.push("=== credential ===");
-      lines.push(`type: ${cred.type}`);
-      if ("authenticatorAttachment" in cred && cred.authenticatorAttachment != null) {
-        lines.push(`authenticatorAttachment: ${cred.authenticatorAttachment} (platform = this device, cross-platform = often phone / security key)`);
-      }
-      lines.push(`id (base64url): ${cred.id}`);
-      lines.push(`rawId (base64url): ${u8ToB64url(new Uint8Array(cred.rawId))}`);
-      if (typeof cred.toJSON === "function") {
-        lines.push("");
-        lines.push("--- PublicKeyCredential.toJSON() (L3) ---");
-        lines.push(JSON.stringify(cred.toJSON(), null, 2));
-      }
-      try {
-        const ext = cred.getClientExtensionResults();
-        if (ext && Object.keys(ext).length) {
-          lines.push("");
-          lines.push("--- getClientExtensionResults() ---");
-          lines.push(JSON.stringify(ext, null, 2));
-        }
-      } catch (e) {
-        lines.push("");
-        lines.push(`getClientExtensionResults: ${e.message}`);
-      }
+function field(label, html, cls = '') {
+  return `<div><div class="field-label">${label}</div><div class="field-value ${cls}">${html}</div></div>`;
+}
 
-      lines.push("");
-      lines.push("=== AuthenticatorAssertionResponse ===");
-      lines.push(`userHandle: ${userHandleHex} (len ${uh ? uh.byteLength : 0})`);
-      lines.push(`signature.length: ${sig.length}`);
-      lines.push(`authenticatorData.length: ${ad.length}`);
-      lines.push("");
-      lines.push("--- authenticatorData (parse) ---");
-      lines.push(`rpIdHash: ${hexU8(ap.rpIdHash)}`);
-      lines.push(`flags: 0x${ap.flags.toString(16)} UP=${!!(ap.flags & 1)} UV=${!!(ap.flags & 4)} AT=${ap.AT} ED=${ap.ED}`);
-      lines.push(`signCount: ${ap.signCount}`);
-      if (ap.AT) {
-        lines.push("(AT set — unexpected on typical assertion)");
-        if (ap.coseDecoded) {
-          lines.push(describeCose(ap.coseDecoded).label);
-        }
-      }
-      lines.push("");
-      lines.push("--- authenticatorData (hex) ---");
-      lines.push(hexU8(ad));
-      lines.push("");
-      lines.push("--- signature (hex) ---");
-      lines.push(hexU8(sig));
-      lines.push("");
-      lines.push("--- clientDataJSON (raw) ---");
-      lines.push(cdjText);
-      if (cdjJson) {
-        lines.push("");
-        lines.push("--- clientDataJSON (parsed) ---");
-        lines.push(JSON.stringify(cdjJson, null, 2));
-      }
-      lines.push("");
-      lines.push("Note: signature algorithm (Ed25519 vs P-256) is not repeated here; it was fixed at registration (see COSE after Create).");
-      return lines.join("\n");
-    }
+function flagsRow(flags) {
+  const defs = [
+    ['UP', 'User Presence'],
+    ['UV', 'User Verified'],
+    ['BE', 'Backup Eligible'],
+    ['BS', 'Backup State'],
+    ['AT', 'Attested Credential Data'],
+    ['ED', 'Extension Data'],
+  ];
+  const chips = defs.map(([k, title]) =>
+    `<span class="flag ${flags[k] ? 'on' : ''}" title="${title}">${k}</span>`
+  ).join('');
+  return `<div><div class="field-label">Flags</div><div class="flags">${chips}</div></div>`;
+}
 
-    document.getElementById("btnClear").onclick = () => {
-      localStorage.removeItem(LS_CRED);
-      document.getElementById("resultOut").textContent = "Cleared local credential id.";
-      document.getElementById("assertOut").textContent = "";
-      document.getElementById("coseTable").innerHTML = "";
-      document.getElementById("rawOut").textContent = "";
-    };
+function transportsRow(list) {
+  const chips = list.map(t => `<span class="transport">${t}</span>`).join('');
+  return `<div><div class="field-label">Transports</div><div class="transports">${chips || '<span style="color:#374151;font-size:.8rem">—</span>'}</div></div>`;
+}
 
-    document.getElementById("btnCreate").onclick = async () => {
-      const resultOut = document.getElementById("resultOut");
-      const coseTable = document.getElementById("coseTable");
-      const rawOut = document.getElementById("rawOut");
-      const assertOut = document.getElementById("assertOut");
-      coseTable.innerHTML = "";
-      rawOut.textContent = "";
-      assertOut.textContent = "";
+// ── Environment bar ───────────────────────────────────────────────────────────
 
-      const rpId = window.location.hostname;
-      const challenge = randomChallenge(32);
+function detectBrowser() {
+  const ua = navigator.userAgent;
+  if (/Edg\//.test(ua))    return 'Edge '    + (ua.match(/Edg\/([\d.]+)/)?.[1]     ?? '');
+  if (/Chrome\//.test(ua)) return 'Chrome '  + (ua.match(/Chrome\/([\d.]+)/)?.[1]  ?? '');
+  if (/Firefox\//.test(ua))return 'Firefox ' + (ua.match(/Firefox\/([\d.]+)/)?.[1] ?? '');
+  if (/Safari\//.test(ua)) return 'Safari '  + (ua.match(/Version\/([\d.]+)/)?.[1] ?? '');
+  return 'Unknown';
+}
 
-      try {
-        const cred = await navigator.credentials.create({
-          publicKey: {
-            challenge,
-            rp: { id: rpId, name: "Ed25519 probe" },
-            user: {
-              id: randomChallenge(16),
-              name: "probe@local",
-              displayName: "Ed25519 probe",
-            },
-            pubKeyCredParams: [{ type: "public-key", alg: -8 }],
-            timeout: 120000,
-            attestation: "none",
-            authenticatorSelection: {
-              residentKey: "preferred",
-              userVerification: "preferred",
-            },
-          },
-        });
+function detectOS() {
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad/.test(ua)) return 'iOS';
+  if (/Android/.test(ua))     return 'Android';
+  if (/Win/.test(ua))         return 'Windows';
+  if (/Mac/.test(ua))         return 'macOS';
+  if (/Linux/.test(ua))       return 'Linux';
+  return 'Unknown';
+}
 
-        if (!cred || cred.type !== "public-key") {
-          resultOut.textContent = "Unexpected credential type.";
-          return;
-        }
+function envItem(label, value) {
+  return `<div class="env-item"><span class="env-label">${label}</span><span class="env-value">${value}</span></div>`;
+}
 
-        localStorage.setItem(LS_CRED, u8ToB64url(new Uint8Array(cred.rawId)));
+function renderEnv() {
+  const supported = !!window.PublicKeyCredential;
+  const bar = document.getElementById('envBar');
+  bar.innerHTML =
+    envItem('Browser', detectBrowser()) +
+    envItem('OS', detectOS()) +
+    envItem('Origin', location.origin) +
+    envItem('WebAuthn', supported ? '✓ Supported' : '✗ Not supported') +
+    envItem('Platform Auth', '<span id="uvpaVal">checking…</span>');
 
-        const att = cred.response;
-        const attObjU8 = abToU8(att.attestationObject);
-        const clientDataJSON = new TextDecoder().decode(att.clientDataJSON);
+  if (!supported) {
+    document.getElementById('alertNoSupport').style.display = '';
+    document.getElementById('btnCreate').disabled = true;
+    document.getElementById('btnCheck').disabled = true;
+    return;
+  }
 
-        const parsed = parseAttestationObject(attObjU8);
-        const ap = parsed.authDataParsed;
-        if (!ap.coseDecoded) {
-          resultOut.textContent = "No COSE key in authData (AT flag off?).";
-          return;
-        }
+  if (location.protocol === 'file:') {
+    document.getElementById('alertFile').style.display = '';
+    document.getElementById('btnCreate').disabled = true;
+    document.getElementById('btnCheck').disabled = true;
+    document.getElementById('uvpaVal').textContent = '—';
+    return;
+  }
 
-        const desc = describeCose(ap.coseDecoded);
-        coseTable.innerHTML = renderCoseTable(desc, ap.coseDecoded);
+  PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+    .then(v => { document.getElementById('uvpaVal').textContent = v ? '✓ Available' : 'Not available'; })
+    .catch(()=> { document.getElementById('uvpaVal').textContent = 'Unknown'; });
+}
 
-        const lines = [
-          `credential.id (base64url): ${cred.id}`,
-          `attestation fmt: ${parsed.fmt}`,
-          `flags: 0x${ap.flags.toString(16)} (UP=${!!(ap.flags & 1)} UV=${!!(ap.flags & 4)} AT=${ap.AT} ED=${ap.ED})`,
-          `signCount: ${ap.signCount}`,
-          `aaguid: ${ap.aaguid ? hexU8(ap.aaguid) : "—"}`,
-          `credentialPublicKey CBOR length: ${ap.coseRaw.length}`,
-          "",
-          "--- clientDataJSON ---",
-          clientDataJSON,
-          "",
-          desc.isEd25519
-            ? "VERDICT: Pass — authenticator returned COSE Ed25519 (-8, OKP, crv 6)."
-            : "VERDICT: Fail for strict Ed25519 — requested alg -8 only but COSE does not match Ed25519.",
-        ];
-        resultOut.textContent = lines.join("\n");
-        rawOut.textContent =
-          "credentialPublicKey (CBOR hex):\n" + hexU8(ap.coseRaw);
-      } catch (e) {
-        resultOut.textContent =
-          `Error: ${e.name}: ${e.message}\n\n` +
-          (e.message.includes("domexception") ? "" : "") +
-          String(e.stack || "");
-      }
-    };
+// ── Button state helper ───────────────────────────────────────────────────────
 
-    document.getElementById("btnCheck").onclick = async () => {
-      const resultOut = document.getElementById("resultOut");
-      const assertOut = document.getElementById("assertOut");
-      resultOut.textContent = "Waiting — use the browser UI (passkey list, QR from phone, or PIN)…";
-      assertOut.textContent = "";
+function setBusy(prefix, label) {
+  document.getElementById('btn'    + prefix).disabled = true;
+  document.getElementById('sp'     + prefix).classList.add('on');
+  document.getElementById('lbl'    + prefix).textContent = label;
+  document.getElementById('box'    + prefix).classList.remove('show');
+}
 
-      const rpId = window.location.hostname;
-      const challenge = randomChallenge(32);
+function setIdle(prefix, label) {
+  document.getElementById('btn'    + prefix).disabled = false;
+  document.getElementById('sp'     + prefix).classList.remove('on');
+  document.getElementById('lbl'    + prefix).textContent = label;
+}
 
-      const publicKey = {
+function showResult(prefix, ok, hdrText, bodyHtml) {
+  const hdr  = document.getElementById('hdr'  + prefix);
+  const body = document.getElementById('body' + prefix);
+  const box  = document.getElementById('box'  + prefix);
+  hdr.className = 'result-hdr ' + (ok ? 'ok' : 'err');
+  hdr.textContent = hdrText;
+  body.innerHTML = bodyHtml;
+  box.classList.add('show');
+}
+
+// ── Create passkey ────────────────────────────────────────────────────────────
+
+async function createPasskey() {
+  setBusy('Create', 'Creating…');
+  try {
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+
+    const cred = await navigator.credentials.create({
+      publicKey: {
         challenge,
-        rpId,
-        userVerification: "preferred",
-        timeout: 300000,
-        hints: ["hybrid"],
-      };
+        rp: { name: 'Passkey -8 Tester', id: location.hostname },
+        user: {
+          id: crypto.getRandomValues(new Uint8Array(16)),
+          name: 'test@passkey-test.local',
+          displayName: 'Test User',
+        },
+        pubKeyCredParams: [{ type: 'public-key', alg: -8 }],
+        authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
+        attestation: 'none',
+        timeout: 120000,
+      },
+    });
 
-      try {
-        const cred = await navigator.credentials.get({ publicKey });
-        if (!cred || cred.type !== "public-key") {
-          resultOut.textContent = "Unexpected credential type.";
-          return;
-        }
-        resultOut.textContent = [
-          "Check passkey finished OK.",
-          "Request used: no allowCredentials (discoverable), hints: [\"hybrid\"], timeout: 300000.",
-          "Full response below →",
-        ].join("\n");
-        assertOut.textContent = formatAssertionResult(cred);
-      } catch (e) {
-        resultOut.textContent = `get() error: ${e.name}: ${e.message}`;
-        assertOut.textContent = "";
-      }
-    };
+    const clientData = JSON.parse(new TextDecoder().decode(cred.response.clientDataJSON));
+    const att        = parseAttObj(cred.response.attestationObject);
+    const auth       = parseAuthData(att.authData);
+    const transports = cred.response.getTransports?.() ?? [];
 
-    document.getElementById("btnGetSaved").onclick = async () => {
-      const resultOut = document.getElementById("resultOut");
-      const assertOut = document.getElementById("assertOut");
-      const idB64 = localStorage.getItem(LS_CRED);
-      if (!idB64) {
-        resultOut.textContent = "No stored credential id. Use Create first.";
-        assertOut.textContent = "";
-        return;
-      }
-      const rawId = b64urlToU8(idB64);
+    let algLine = '—';
+    let ktyLine = '—';
+    let crvLine = '—';
+    let pubKeyHex = '—';
+    if (auth.coseKey) {
+      const alg = auth.coseKey.get(3);
+      const kty = auth.coseKey.get(1);
+      const crv = auth.coseKey.get(-1);
+      const x   = auth.coseKey.get(-2);
+      algLine   = alg !== undefined ? `${alg}  →  ${ALG[String(alg)] ?? 'unknown'}` : '—';
+      ktyLine   = kty !== undefined ? `${kty}  →  ${KTY[kty] ?? 'unknown'}` : '—';
+      crvLine   = crv !== undefined ? `${crv}  →  ${CRV[crv] ?? 'unknown'}` : '—';
+      pubKeyHex = x   ? toHex(x) : '—';
+    }
 
-      const rpId = window.location.hostname;
-      const challenge = randomChallenge(32);
+    const aaguidStr = auth.aaguid ? toHex(auth.aaguid) : '—';
 
-      try {
-        resultOut.textContent = "Waiting — authenticating with stored credential id only…";
-        const cred = await navigator.credentials.get({
-          publicKey: {
-            challenge,
-            rpId,
-            allowCredentials: [{ type: "public-key", id: rawId }],
-            userVerification: "preferred",
-            timeout: 120000,
-          },
-        });
-        if (!cred || cred.type !== "public-key") {
-          resultOut.textContent = "Unexpected assertion.";
-          return;
-        }
-        resultOut.textContent = "Stored-id authentication OK. Full response →";
-        assertOut.textContent = formatAssertionResult(cred);
-      } catch (e) {
-        resultOut.textContent = `get() error: ${e.name}: ${e.message}`;
-        assertOut.textContent = "";
-      }
-    };
-  </script>
+    showResult('Create', true, '✓ Registration successful', [
+      field('Credential ID (base64url)', toB64url(cred.rawId)),
+      field('Authenticator Attachment', cred.authenticatorAttachment ?? '—'),
+      field('Attestation Format', att.fmt ?? 'none'),
+      field('COSE alg (key)', algLine, algLine.includes('-8') ? 'green' : ''),
+      field('COSE kty', ktyLine),
+      field('COSE crv', crvLine),
+      field('Public Key x (hex)', pubKeyHex),
+      flagsRow(auth.flags),
+      field('Sign Count', String(auth.signCount)),
+      field('AAGUID (hex)', aaguidStr),
+      transportsRow(transports),
+      field('Client Data Type', clientData.type),
+      field('Client Data Origin', clientData.origin),
+      field('rpId Hash (hex)', toHex(auth.rpIdHash)),
+    ].join(''));
+
+  } catch (err) {
+    showResult('Create', false, '✗ Registration failed',
+      field('Error', escHtml(err.message ?? String(err))));
+  }
+  setIdle('Create', 'Create Passkey');
+}
+
+// ── Check / authenticate ──────────────────────────────────────────────────────
+
+async function checkPasskey() {
+  setBusy('Check', 'Waiting for passkey…');
+  try {
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        userVerification: 'required',
+        timeout: 120000,
+        // allowCredentials intentionally empty → shows full picker with QR option
+      },
+    });
+
+    const clientData = JSON.parse(new TextDecoder().decode(assertion.response.clientDataJSON));
+    const auth       = parseAuthData(assertion.response.authenticatorData);
+    const sigBytes   = new Uint8Array(assertion.response.signature);
+    const userHandle = assertion.response.userHandle
+      ? toB64url(assertion.response.userHandle)
+      : '— (not returned)';
+
+    const sigLen     = sigBytes.length;
+    const sigLenNote = sigLen === 64
+      ? `${sigLen}  →  ✓ Ed25519 (64 bytes)`
+      : `${sigLen}  →  not 64 bytes (may not be Ed25519)`;
+
+    showResult('Check', true, '✓ Authentication successful', [
+      field('Credential ID (base64url)', toB64url(assertion.rawId)),
+      field('Authenticator Attachment', assertion.authenticatorAttachment ?? '—'),
+      field('User Handle (base64url)', userHandle),
+      field('Client Data Type', clientData.type),
+      field('Client Data Origin', clientData.origin),
+      flagsRow(auth.flags),
+      field('Sign Count', String(auth.signCount)),
+      field('rpId Hash (hex)', toHex(auth.rpIdHash)),
+      field('Signature Length (bytes)', sigLenNote, sigLen === 64 ? 'green' : ''),
+      field('Signature (base64url)', toB64url(sigBytes)),
+      field('Signature (hex)', toHex(sigBytes)),
+    ].join(''));
+
+  } catch (err) {
+    showResult('Check', false, '✗ Authentication failed',
+      field('Error', escHtml(err.message ?? String(err))));
+  }
+  setIdle('Check', 'Check');
+}
+
+// ── Misc ──────────────────────────────────────────────────────────────────────
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+renderEnv();
+</script>
 </body>
 </html>

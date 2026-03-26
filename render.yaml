@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: passkey-test
+    env: static
+    staticPublishPath: .
+    buildCommand: ""
