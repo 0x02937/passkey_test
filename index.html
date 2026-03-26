@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Passkey -8 Tester</title>
+  <title>Passkey Tester</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -111,6 +111,27 @@
 
     .btn-create { background: #4f46e5; color: #fff; }
     .btn-check  { background: #059669; color: #fff; }
+    .btn-std-create { background: #0e7490; color: #fff; }
+    .btn-std-check  { background: #047857; color: #fff; }
+
+    .section-hdr {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin: 28px 0 12px;
+    }
+    .section-hdr-title {
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+    .section-hdr-title.cyan   { color: #22d3ee; }
+    .section-hdr-title.indigo { color: #818cf8; }
+    .section-hdr-note {
+      font-size: 0.8rem;
+      color: #374151;
+    }
 
     .spinner {
       width: 15px; height: 15px;
@@ -192,8 +213,8 @@
 <div class="container">
 
   <header>
-    <h1>Passkey <span>-8</span> Tester</h1>
-    <p>Ed25519 / EdDSA passkey creation &amp; authentication tester across environments</p>
+    <h1>Passkey <span>Tester</span></h1>
+    <p>Standard (ES256) and Ed25519 (-8) passkey creation &amp; authentication across environments</p>
   </header>
 
   <div id="alertFile" class="alert" style="display:none">
@@ -206,18 +227,63 @@
 
   <div class="env-bar" id="envBar"></div>
 
-  <!-- Step 1 -->
+  <!-- ── Standard passkey ──────────────────────────────────────────────── -->
+  <div class="section-hdr">
+    <span class="section-hdr-title cyan">Standard Passkey</span>
+    <span class="section-hdr-note">Sanity check — ES256 (-7) + RS256 (-257), works on all platforms</span>
+  </div>
+
+  <div class="card">
+    <span class="step-label" style="color:#22d3ee">Step 1</span>
+    <h2>Create Standard Passkey</h2>
+    <p class="desc">
+      Registers a discoverable passkey using the default algorithms supported everywhere,
+      including Windows Hello. Use this to confirm WebAuthn is working before testing -8.
+    </p>
+    <div class="param-box">pubKeyCredParams: [{ alg: <em>-7</em> }, { alg: <em>-257</em> }]  // ES256, RS256</div>
+    <button class="btn-std-create" id="btnStdCreate" onclick="createStdPasskey()">
+      <div class="spinner" id="spStdCreate"></div>
+      <span id="lblStdCreate">Create Standard Passkey</span>
+    </button>
+    <div class="result-box" id="boxStdCreate">
+      <div class="result-hdr ok" id="hdrStdCreate"></div>
+      <div class="result-body" id="bodyStdCreate"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <span class="step-label" style="color:#22d3ee">Step 2</span>
+    <h2>Check Standard Passkey</h2>
+    <p class="desc">
+      Opens the browser passkey picker. Use QR code to authenticate from another device.
+    </p>
+    <button class="btn-std-check" id="btnStdCheck" onclick="checkStdPasskey()">
+      <div class="spinner" id="spStdCheck"></div>
+      <span id="lblStdCheck">Check</span>
+    </button>
+    <div class="result-box" id="boxStdCheck">
+      <div class="result-hdr ok" id="hdrStdCheck"></div>
+      <div class="result-body" id="bodyStdCheck"></div>
+    </div>
+  </div>
+
+  <!-- ── Ed25519 -8 passkey ─────────────────────────────────────────────── -->
+  <div class="section-hdr">
+    <span class="section-hdr-title indigo">Ed25519 Passkey</span>
+    <span class="section-hdr-note">alg -8 only — fails on Windows Hello, works on iOS / Android / macOS</span>
+  </div>
+
   <div class="card">
     <span class="step-label">Step 1</span>
-    <h2>Create Passkey</h2>
+    <h2>Create Passkey (-8)</h2>
     <p class="desc">
       Registers a discoverable passkey specifying only alg <strong>-8</strong> (EdDSA / Ed25519).
-      The browser will prompt for biometrics or PIN.
+      Will fail on Windows Hello — use an iPhone, Android, or macOS device.
     </p>
     <div class="param-box">pubKeyCredParams: [{ type: "public-key", alg: <em>-8</em> }]</div>
     <button class="btn-create" id="btnCreate" onclick="createPasskey()">
       <div class="spinner" id="spCreate"></div>
-      <span id="lblCreate">Create Passkey</span>
+      <span id="lblCreate">Create Passkey (-8)</span>
     </button>
     <div class="result-box" id="boxCreate">
       <div class="result-hdr ok" id="hdrCreate"></div>
@@ -225,7 +291,6 @@
     </div>
   </div>
 
-  <!-- Step 2 -->
   <div class="card">
     <span class="step-label">Step 2</span>
     <h2>Check / Authenticate</h2>
@@ -399,17 +464,17 @@ function renderEnv() {
     envItem('WebAuthn', supported ? '✓ Supported' : '✗ Not supported') +
     envItem('Platform Auth', '<span id="uvpaVal">checking…</span>');
 
+  const allBtns = ['btnStdCreate','btnStdCheck','btnCreate','btnCheck'];
+
   if (!supported) {
     document.getElementById('alertNoSupport').style.display = '';
-    document.getElementById('btnCreate').disabled = true;
-    document.getElementById('btnCheck').disabled = true;
+    allBtns.forEach(id => { document.getElementById(id).disabled = true; });
     return;
   }
 
   if (location.protocol === 'file:') {
     document.getElementById('alertFile').style.display = '';
-    document.getElementById('btnCreate').disabled = true;
-    document.getElementById('btnCheck').disabled = true;
+    allBtns.forEach(id => { document.getElementById(id).disabled = true; });
     document.getElementById('uvpaVal').textContent = '—';
     return;
   }
@@ -444,23 +509,21 @@ function showResult(prefix, ok, hdrText, bodyHtml) {
   box.classList.add('show');
 }
 
-// ── Create passkey ────────────────────────────────────────────────────────────
+// ── Shared create logic ───────────────────────────────────────────────────────
 
-async function createPasskey() {
-  setBusy('Create', 'Creating…');
+async function doCreate(prefix, algs, idleLabel) {
+  setBusy(prefix, 'Creating…');
   try {
-    const challenge = crypto.getRandomValues(new Uint8Array(32));
-
     const cred = await navigator.credentials.create({
       publicKey: {
-        challenge,
-        rp: { name: 'Passkey -8 Tester', id: location.hostname },
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        rp: { name: 'Passkey Tester', id: location.hostname },
         user: {
           id: crypto.getRandomValues(new Uint8Array(16)),
           name: 'test@passkey-test.local',
           displayName: 'Test User',
         },
-        pubKeyCredParams: [{ type: 'public-key', alg: -8 }],
+        pubKeyCredParams: algs.map(a => ({ type: 'public-key', alg: a })),
         authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
         attestation: 'none',
         timeout: 120000,
@@ -472,34 +535,32 @@ async function createPasskey() {
     const auth       = parseAuthData(att.authData);
     const transports = cred.response.getTransports?.() ?? [];
 
-    let algLine = '—';
-    let ktyLine = '—';
-    let crvLine = '—';
-    let pubKeyHex = '—';
+    let algLine = '—', ktyLine = '—', crvLine = '—', pubKeyHex = '—';
+    let actualAlg;
     if (auth.coseKey) {
-      const alg = auth.coseKey.get(3);
-      const kty = auth.coseKey.get(1);
-      const crv = auth.coseKey.get(-1);
-      const x   = auth.coseKey.get(-2);
-      algLine   = alg !== undefined ? `${alg}  →  ${ALG[String(alg)] ?? 'unknown'}` : '—';
-      ktyLine   = kty !== undefined ? `${kty}  →  ${KTY[kty] ?? 'unknown'}` : '—';
-      crvLine   = crv !== undefined ? `${crv}  →  ${CRV[crv] ?? 'unknown'}` : '—';
-      pubKeyHex = x   ? toHex(x) : '—';
+      actualAlg     = auth.coseKey.get(3);
+      const kty     = auth.coseKey.get(1);
+      const crv     = auth.coseKey.get(-1);
+      const x       = auth.coseKey.get(-2);
+      algLine   = actualAlg !== undefined ? `${actualAlg}  →  ${ALG[String(actualAlg)] ?? 'unknown'}` : '—';
+      ktyLine   = kty       !== undefined ? `${kty}  →  ${KTY[kty] ?? 'unknown'}` : '—';
+      crvLine   = crv       !== undefined ? `${crv}  →  ${CRV[crv] ?? 'unknown'}` : '—';
+      pubKeyHex = x         ? toHex(x) : '—';
     }
 
-    const aaguidStr = auth.aaguid ? toHex(auth.aaguid) : '—';
+    const algIsRequested = actualAlg !== undefined && algs.includes(actualAlg);
 
-    showResult('Create', true, '✓ Registration successful', [
+    showResult(prefix, true, '✓ Registration successful', [
       field('Credential ID (base64url)', toB64url(cred.rawId)),
       field('Authenticator Attachment', cred.authenticatorAttachment ?? '—'),
       field('Attestation Format', att.fmt ?? 'none'),
-      field('COSE alg (key)', algLine, algLine.includes('-8') ? 'green' : ''),
+      field('COSE alg (key)', algLine, algIsRequested ? 'green' : ''),
       field('COSE kty', ktyLine),
       field('COSE crv', crvLine),
       field('Public Key x (hex)', pubKeyHex),
       flagsRow(auth.flags),
       field('Sign Count', String(auth.signCount)),
-      field('AAGUID (hex)', aaguidStr),
+      field('AAGUID (hex)', auth.aaguid ? toHex(auth.aaguid) : '—'),
       transportsRow(transports),
       field('Client Data Type', clientData.type),
       field('Client Data Origin', clientData.origin),
@@ -507,25 +568,22 @@ async function createPasskey() {
     ].join(''));
 
   } catch (err) {
-    showResult('Create', false, '✗ Registration failed',
+    showResult(prefix, false, '✗ Registration failed',
       field('Error', escHtml(err.message ?? String(err))));
   }
-  setIdle('Create', 'Create Passkey');
+  setIdle(prefix, idleLabel);
 }
 
-// ── Check / authenticate ──────────────────────────────────────────────────────
+// ── Shared check logic ────────────────────────────────────────────────────────
 
-async function checkPasskey() {
-  setBusy('Check', 'Waiting for passkey…');
+async function doCheck(prefix, idleLabel) {
+  setBusy(prefix, 'Waiting for passkey…');
   try {
-    const challenge = crypto.getRandomValues(new Uint8Array(32));
-
     const assertion = await navigator.credentials.get({
       publicKey: {
-        challenge,
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
         userVerification: 'required',
         timeout: 120000,
-        // allowCredentials intentionally empty → shows full picker with QR option
       },
     });
 
@@ -539,9 +597,9 @@ async function checkPasskey() {
     const sigLen     = sigBytes.length;
     const sigLenNote = sigLen === 64
       ? `${sigLen}  →  ✓ Ed25519 (64 bytes)`
-      : `${sigLen}  →  not 64 bytes (may not be Ed25519)`;
+      : `${sigLen}  →  ${sigLen} bytes (ECDSA DER or RSA)`;
 
-    showResult('Check', true, '✓ Authentication successful', [
+    showResult(prefix, true, '✓ Authentication successful', [
       field('Credential ID (base64url)', toB64url(assertion.rawId)),
       field('Authenticator Attachment', assertion.authenticatorAttachment ?? '—'),
       field('User Handle (base64url)', userHandle),
@@ -556,11 +614,18 @@ async function checkPasskey() {
     ].join(''));
 
   } catch (err) {
-    showResult('Check', false, '✗ Authentication failed',
+    showResult(prefix, false, '✗ Authentication failed',
       field('Error', escHtml(err.message ?? String(err))));
   }
-  setIdle('Check', 'Check');
+  setIdle(prefix, idleLabel);
 }
+
+// ── Public entry points ───────────────────────────────────────────────────────
+
+function createStdPasskey() { doCreate('StdCreate', [-7, -257], 'Create Standard Passkey'); }
+function checkStdPasskey()  { doCheck('StdCheck',  'Check'); }
+function createPasskey()    { doCreate('Create',    [-8],       'Create Passkey (-8)'); }
+function checkPasskey()     { doCheck('Check',      'Check'); }
 
 // ── Misc ──────────────────────────────────────────────────────────────────────
 
