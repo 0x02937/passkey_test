@@ -185,6 +185,7 @@
       line-height: 1.5;
     }
     .field-value.green { color: #4ade80; }
+    .field-value.prose { font-family: system-ui, sans-serif; color: #f87171; word-break: normal; line-height: 1.6; }
 
     .flags { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; background: #080b14; border-radius: 6px; }
     .flag {
@@ -270,7 +271,6 @@
   <!-- ── Ed25519 -8 passkey ─────────────────────────────────────────────── -->
   <div class="section-hdr">
     <span class="section-hdr-title indigo">Ed25519 Passkey</span>
-    <span class="section-hdr-note">alg -8 only — fails on Windows Hello, works on iOS / Android / macOS</span>
   </div>
 
   <div class="card">
@@ -538,8 +538,6 @@ async function doCreate(prefix, algs, idleLabel) {
       },
     });
 
-    localStorage.setItem('pk_cred_' + prefix, toB64url(cred.rawId));
-
     const clientData = JSON.parse(new TextDecoder().decode(cred.response.clientDataJSON));
     const att        = parseAttObj(cred.response.attestationObject);
     const auth       = parseAuthData(att.authData);
@@ -548,10 +546,10 @@ async function doCreate(prefix, algs, idleLabel) {
     let algLine = '—', ktyLine = '—', crvLine = '—', pubKeyHex = '—';
     let actualAlg;
     if (auth.coseKey) {
-      actualAlg     = auth.coseKey.get(3);
-      const kty     = auth.coseKey.get(1);
-      const crv     = auth.coseKey.get(-1);
-      const x       = auth.coseKey.get(-2);
+      actualAlg = auth.coseKey.get(3);
+      const kty = auth.coseKey.get(1);
+      const crv = auth.coseKey.get(-1);
+      const x   = auth.coseKey.get(-2);
       algLine   = actualAlg !== undefined ? `${actualAlg}  →  ${ALG[String(actualAlg)] ?? 'unknown'}` : '—';
       ktyLine   = kty       !== undefined ? `${kty}  →  ${KTY[kty] ?? 'unknown'}` : '—';
       crvLine   = crv       !== undefined ? `${crv}  →  ${CRV[crv] ?? 'unknown'}` : '—';
@@ -560,22 +558,40 @@ async function doCreate(prefix, algs, idleLabel) {
 
     const algIsRequested = actualAlg !== undefined && algs.includes(actualAlg);
 
-    showResult(prefix, true, '✓ Registration successful', [
-      field('Credential ID (base64url)', toB64url(cred.rawId)),
-      field('Authenticator Attachment', cred.authenticatorAttachment ?? '—'),
-      field('Attestation Format', att.fmt ?? 'none'),
-      field('COSE alg (key)', algLine, algIsRequested ? 'green' : ''),
-      field('COSE kty', ktyLine),
-      field('COSE crv', crvLine),
-      field('Public Key x (hex)', pubKeyHex),
-      flagsRow(auth.flags),
-      field('Sign Count', String(auth.signCount)),
-      field('AAGUID (hex)', auth.aaguid ? toHex(auth.aaguid) : '—'),
-      transportsRow(transports),
-      field('Client Data Type', clientData.type),
-      field('Client Data Origin', clientData.origin),
-      field('rpId Hash (hex)', toHex(auth.rpIdHash)),
-    ].join(''));
+    if (!algIsRequested) {
+      const requested = algs.join(', ');
+      const got       = actualAlg !== undefined ? `${actualAlg} (${ALG[String(actualAlg)] ?? 'unknown'})` : 'unknown';
+      showResult(prefix, false,
+        '✗ Wrong algorithm — authenticator ignored the requested alg', [
+          field('Requested alg(s)', requested),
+          field('Actual alg registered', got),
+          field('What happened',
+            'The authenticator created a passkey with a different algorithm than requested. ' +
+            'This is non-compliant behavior. The credential was NOT saved.', 'prose'),
+          field('Credential ID (base64url)', toB64url(cred.rawId)),
+          field('Authenticator Attachment', cred.authenticatorAttachment ?? '—'),
+          flagsRow(auth.flags),
+          transportsRow(transports),
+        ].join(''));
+    } else {
+      localStorage.setItem('pk_cred_' + prefix, toB64url(cred.rawId));
+      showResult(prefix, true, '✓ Registration successful', [
+        field('Credential ID (base64url)', toB64url(cred.rawId)),
+        field('Authenticator Attachment', cred.authenticatorAttachment ?? '—'),
+        field('Attestation Format', att.fmt ?? 'none'),
+        field('COSE alg (key)', algLine, 'green'),
+        field('COSE kty', ktyLine),
+        field('COSE crv', crvLine),
+        field('Public Key x (hex)', pubKeyHex),
+        flagsRow(auth.flags),
+        field('Sign Count', String(auth.signCount)),
+        field('AAGUID (hex)', auth.aaguid ? toHex(auth.aaguid) : '—'),
+        transportsRow(transports),
+        field('Client Data Type', clientData.type),
+        field('Client Data Origin', clientData.origin),
+        field('rpId Hash (hex)', toHex(auth.rpIdHash)),
+      ].join(''));
+    }
 
   } catch (err) {
     showResult(prefix, false, '✗ Registration failed',

@@ -21,10 +21,10 @@
 |---|---|---|---|---|
 | Windows Chrome | iCloud Keychain (iPhone) | QR code | ✅ | register on iPhone first |
 | Windows Chrome | Windows Hello | platform | ❌ | no -8 key to use |
-| Windows Chrome | iCloud Keychain (iPhone) | QR code | | |
+| Windows Chrome | iCloud Keychain (iPhone) | QR code |❌ | |
 | iPhone Safari | iCloud Keychain | platform | ✅ | |
-| macOS Safari | iCloud Keychain | platform | | |
-| macOS Chrome | Touch ID | platform | | |
+| macOS Safari | iCloud Keychain | platform |✅ | |
+| macOS Chrome | Touch ID | platform |❌ | |
 | Android Chrome | Google Password Manager | platform | | |
 
 ## Cross-Device (QR / Hybrid) Registration
